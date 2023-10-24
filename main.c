@@ -524,7 +524,16 @@ void send_response(Response *response) {
         return;
     }
 
-    send(*response->connection, response->encoded_response, (int) response_length, 0);
+    int bytes_sent = send(*response->connection, response->encoded_response, (int) response_length, 0);
+    if (bytes_sent == SOCKET_ERROR) {
+        printf("Unable to write response to client, failed with error: %d\n", WSAGetLastError());
+        free_response(response);
+        return;
+    }
+
+    if (bytes_sent != (int)response_length) {
+        printf("Warning: Not all bytes sent. Bytes sent: %d, Expected: %zu\n", bytes_sent, response_length);
+    }
     free_response(response);
 }
 
