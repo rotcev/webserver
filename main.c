@@ -5,14 +5,15 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-#define STATUS_TABLE_SIZE 512
+#define MAX_STATUS_CODE 512
+#define MAX_BUFFER_SIZE 8192
 
 /* Structure to represent an HttpStatus code and it's text form */
 typedef struct HttpStatus {
     int code;
     const char *reason;
 } HttpStatus;
-static HttpStatus statuses[STATUS_TABLE_SIZE];
+static HttpStatus statuses[MAX_STATUS_CODE];
 
 /* Structure to hold server configuration settings. */
 typedef struct Configuration {
@@ -99,9 +100,9 @@ SOCKET setup_server(Configuration *configuration);
  */
 void init_status_tbl() {
     memset(statuses, 0, sizeof(statuses));
-    statuses[200 % STATUS_TABLE_SIZE] = (HttpStatus) {200, "OK"};
-    statuses[201 % STATUS_TABLE_SIZE] = (HttpStatus) {201, "Created"};
-    statuses[204 % STATUS_TABLE_SIZE] = (HttpStatus) {204, "No Content"};
+    statuses[200] = (HttpStatus) {200, "OK"};
+    statuses[201] = (HttpStatus) {201, "Created"};
+    statuses[204] = (HttpStatus) {204, "No Content"};
 }
 
 /**
@@ -113,11 +114,10 @@ void init_status_tbl() {
  *         If the status code is not found in the `statuses` array, the function returns NULL.
  */
 const char *reason(int code) {
-    int index = code % STATUS_TABLE_SIZE;
-    if (statuses[index].code == code) {
-        return statuses[index].reason;
+    if (code < 0 || code >= MAX_STATUS_CODE || statuses[code].code != code) {
+        return NULL;
     }
-    return NULL;
+    return statuses[code].reason;
 }
 
 /**
@@ -276,6 +276,15 @@ void http_decode(SOCKET sock, Configuration *configuration, char **headers_out, 
     while (read_ptr < configuration->max_reqsize - 1) {
         int bytes_read = recv(sock, buffer + read_ptr, configuration->max_reqsize - read_ptr, 0);
 
+        if (bytes_read == -1) {
+            printf("Error reading from socket");
+            free(*headers_out);
+            free(*body_out);
+            *headers_out = NULL;
+            *body_out = NULL;
+            return;
+        }
+
         // If no bytes are read or an error occurs, stop reading.
         if (bytes_read <= 0) {
             break;
@@ -429,7 +438,7 @@ SOCKET setup_server(Configuration *configuration) {
 
     SOCKET sock = socket(server_addr.sin_family, SOCK_STREAM, IPPROTO_TCP);
     if (sock == INVALID_SOCKET) {
-        printf("Unable to create socket!");
+        printf("Unable to create socket! Error: %d\n", WSAGetLastError());
         return INVALID_SOCKET;
     }
 
@@ -462,6 +471,7 @@ void handle_request(SOCKET connection, Configuration *configuration) {
 
     if (!headers) {
         printf("Failed to parse headers from client");
+        free_request_resources(NULL, headers, body);
         closesocket(connection);
         return;
     }
@@ -521,7 +531,8 @@ void send_response(Configuration *configuration, Response *response) {
     size_t response_length = strlen(response->encoded_response);
 
     if (response_length >= configuration->max_ressize) {
-        printf("Attempted to send response that exceeds configuration->max_ressize. Response size: %zu", response_length);
+        printf("Attempted to send response that exceeds configuration->max_ressize. Response size: %zu",
+               response_length);
         free_response(response);
         return;
     }
@@ -547,7 +558,7 @@ void send_response(Configuration *configuration, Response *response) {
  * @param body Request body to be freed.
  */
 void free_request_resources(Request *request, char *headers, char *body) {
-    free_request(request);
+    if (request) free_request(request);
     if (headers) free(headers);
     if (body) free(body);
 }
@@ -592,8 +603,8 @@ int main() {
 
     Configuration configuration = {
             .port = 80,
-            .max_reqsize = 8192,
-            .max_ressize = 8192,
+            .max_reqsize = MAX_BUFFER_SIZE,
+            .max_ressize = MAX_BUFFER_SIZE,
             .listening = true
     };
 
