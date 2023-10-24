@@ -5,7 +5,7 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-#define STATUS_TABLE_SIZE 512  // or another size, adjusted for your data
+#define STATUS_TABLE_SIZE 512
 
 /* Structure to represent an HttpStatus code and it's text form */
 typedef struct HttpStatus {
@@ -41,10 +41,10 @@ typedef struct Request {
 typedef struct Response {
     const SOCKET *connection;
     int header_count;
-    Header *headers;       // Linked list of headers
-    int code;              // HTTP status code
-    char *http_version; // String representation of HTTP version (e.g., "HTTP/1.1")
-    char *body;            // Response body
+    Header *headers;       /* Linked list of headers */
+    int code;              /* HTTP status code */
+    char *http_version;    /* String representation of HTTP version (e.g., "HTTP/1.1") */
+    char *body;            /* Response body */
     char *encoded_response;
 } Response;
 
@@ -512,13 +512,15 @@ void send_response(Response *response) {
     encode(response);
 
     if (!response->encoded_response) {
-        printf("NO ENCODED RESPONSE TO SEND");
+        printf("No encoded response to send");
+        free_response(response);
         return;
     }
     size_t response_length = strlen(response->encoded_response);
 
     if (response_length >= 8192) {
-        printf("RESPONSE LENGTH TOO BIG");
+        printf("Attempted to send response that is too large. Response size: %zu", response_length);
+        free_response(response);
         return;
     }
 
