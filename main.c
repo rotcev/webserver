@@ -18,6 +18,7 @@ static HttpStatus statuses[STATUS_TABLE_SIZE];
 typedef struct Configuration {
     int port;            /* Port number on which the server will listen. */
     int max_reqsize;     /* Maximum allowed size for an incoming request. */
+    int max_ressize;     /* Maximum allowed size for an outbound response. */
     bool listening;      /* Flag indicating if the server is listening for connections. */
 } Configuration;
 
@@ -79,7 +80,7 @@ void add_header(Response *response, const char *name, const char *value);
 void display_request_details(Request *request, char *body);
 
 /* Sends a response to the client. In this case, a "204 No Content" response. */
-void send_response(Response *response);
+void send_response(Configuration *configuration, Response *response);
 
 /* Frees resources once a request has been processed. */
 void free_request_resources(Request *request, char *headers, char *body);
@@ -476,7 +477,7 @@ void handle_request(SOCKET connection, Configuration *configuration) {
                 .body = strdup("<html><body><h4>Hello</h4></body></html>"),
                 .code = 200
         };
-        send_response(&response);
+        send_response(configuration, &response);
     }
 
     free_request_resources(&request, headers, body);
@@ -506,9 +507,10 @@ void display_request_details(Request *request, char *body) {
 /**
  * Sends the constructed HTTP response back to the client.
  *
+ * @param configuration Pointer to the global configuration.
  * @param response Pointer to the Response structure.
  */
-void send_response(Response *response) {
+void send_response(Configuration *configuration, Response *response) {
     encode(response);
 
     if (!response->encoded_response) {
@@ -518,8 +520,8 @@ void send_response(Response *response) {
     }
     size_t response_length = strlen(response->encoded_response);
 
-    if (response_length >= 8192) {
-        printf("Attempted to send response that is too large. Response size: %zu", response_length);
+    if (response_length >= configuration->max_ressize) {
+        printf("Attempted to send response that exceeds configuration->max_ressize. Response size: %zu", response_length);
         free_response(response);
         return;
     }
@@ -531,7 +533,7 @@ void send_response(Response *response) {
         return;
     }
 
-    if (bytes_sent != (int)response_length) {
+    if (bytes_sent != (int) response_length) {
         printf("Warning: Not all bytes sent. Bytes sent: %d, Expected: %zu\n", bytes_sent, response_length);
     }
     free_response(response);
@@ -591,6 +593,7 @@ int main() {
     Configuration configuration = {
             .port = 80,
             .max_reqsize = 8192,
+            .max_ressize = 8192,
             .listening = true
     };
 
