@@ -100,9 +100,42 @@ SOCKET setup_server(Configuration *configuration);
  */
 void init_status_tbl() {
     memset(statuses, 0, sizeof(statuses));
+
+    // 1xx Informational
+    statuses[100] = (HttpStatus) {100, "Continue"};
+    statuses[101] = (HttpStatus) {101, "Switching Protocols"};
+
+    // 2xx Success
     statuses[200] = (HttpStatus) {200, "OK"};
     statuses[201] = (HttpStatus) {201, "Created"};
+    statuses[202] = (HttpStatus) {202, "Accepted"};
     statuses[204] = (HttpStatus) {204, "No Content"};
+    statuses[206] = (HttpStatus) {206, "Partial Content"};
+
+    // 3xx Redirection
+    statuses[300] = (HttpStatus) {300, "Multiple Choices"};
+    statuses[301] = (HttpStatus) {301, "Moved Permanently"};
+    statuses[302] = (HttpStatus) {302, "Found"};
+    statuses[304] = (HttpStatus) {304, "Not Modified"};
+
+    // 4xx Client Errors
+    statuses[400] = (HttpStatus) {400, "Bad Request"};
+    statuses[401] = (HttpStatus) {401, "Unauthorized"};
+    statuses[403] = (HttpStatus) {403, "Forbidden"};
+    statuses[404] = (HttpStatus) {404, "Not Found"};
+    statuses[405] = (HttpStatus) {405, "Method Not Allowed"};
+    statuses[409] = (HttpStatus) {409, "Conflict"};
+    statuses[413] = (HttpStatus) {413, "Payload Too Large"};
+    statuses[414] = (HttpStatus) {414, "URI Too Long"};
+    statuses[415] = (HttpStatus) {415, "Unsupported Media Type"};
+    statuses[429] = (HttpStatus) {429, "Too Many Requests"};
+
+    // 5xx Server Errors
+    statuses[500] = (HttpStatus) {500, "Internal Server Error"};
+    statuses[501] = (HttpStatus) {501, "Not Implemented"};
+    statuses[502] = (HttpStatus) {502, "Bad Gateway"};
+    statuses[503] = (HttpStatus) {503, "Service Unavailable"};
+    statuses[504] = (HttpStatus) {504, "Gateway Timeout"};
 }
 
 /**
